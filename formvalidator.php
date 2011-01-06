@@ -7,7 +7,6 @@ class FormValidator extends Library_Base {
     private $errors = array();
     private $rules = array();
     private $fields = array();
-    private $functions = array();
     private $haspostdata = FALSE;
 
     /*** ADD NEW RULE FUNCTIONS BELOW THIS LINE ***/
@@ -152,12 +151,7 @@ class FormValidator extends Library_Base {
     {
         if ( is_callable($function) ) {
             // set rule and function
-            $this->set_rule($name, $function, $message);
-            // cache callback function
-            $this->callbacks[$name] = $function;
-        } elseif ( is_string($function) && isset ($this->functions[$function]) ) {
-            // use cached callback
-            $this->set_rule($name, $this->functions[$function], $message);
+            $this->set_rule($name, $function, $message);            
         } elseif ( is_string($function) && preg_match($function, 'callback') !== FALSE ) {
             // we can parse this as a regexp. set rule function accordingly.
             $this->set_rule($name, function($value) use ($function) {                
@@ -176,35 +170,34 @@ class FormValidator extends Library_Base {
      * validate
      * @param string $key
      * @param string $label
-     * @param bool $reset
      * @return bool
      */
 
-    public function validate($key, $label='', $reset=true)
-    {
+    public function validate($key, $label='') {
         // do not attempt to validate when no post data is present
-        if ( $this->haspostdata ) {
+        if ($this->haspostdata) {
             // set up field name for error message
-            if ( !empty ($label) ) {
+            if (!empty($label)) {
                 $this->fields[$key] = $label;
             }
             // try each rule function
-            foreach ($this->rules as $rule => $is_true) {
-                if ( $is_true ) {
-                    $function = $this->functions[$rule];
-                    if ( is_callable($function) ) {
-                        if ( $function($this->getval($key)) === FALSE ) {
-                            $this->register_error($rule, $key);
-                            // reset rules
-                            $this->rules = array();
-                            return FALSE;
-                        }
+            foreach ($this->rules as $rule => $function) {
+                if (is_callable($function)) {
+                    if ($function($this->getval($key)) === FALSE) {
+                        $this->register_error($rule, $key);
+                        // reset rules
+                        $this->rules = array();
+                        return FALSE;
                     }
+                } else {
+                    $this->register_error($rule, $key, 'Invalid function for rule');
+                    $this->rules = array();
+                    return FALSE;
                 }
             }
             // reset rules
-            if ( $reset )
-                $this->rules = array();
+            $this->rules = array();
+            return TRUE;
         }
     }
 
@@ -272,11 +265,12 @@ class FormValidator extends Library_Base {
      * register_error
      * @param string $rule
      * @param string $key
+     * @param string $msg_override
      */
 
-    private function register_error($rule, $key)
+    private function register_error($rule, $key, $msg_override='')
     {
-        $message = $this->messages[$rule];
+        $message = ( empty($msg_override) ) ? $this->messages[$rule] : $msg_override;
         $field = $this->fields[$key];
 
         if ( empty ($message) )
@@ -295,16 +289,12 @@ class FormValidator extends Library_Base {
      * @param string $message
      */
 
-    private function set_rule($rule, $function, $message='')
-    {
-         // do not attempt to validate when no post data is present
-        if ( $this->haspostdata ) {
-            if ( ! array_key_exists($rule, $this->rules) ) {
-                $this->rules[$rule] = TRUE;
-                if ( ! array_key_exists($rule, $this->functions) && is_callable($function) ) {
-                    $this->functions[$rule] = $function;
-                }
-                if ( !empty ($message) ) {
+    private function set_rule($rule, $function, $message='') {
+        // do not attempt to validate when no post data is present
+        if ($this->haspostdata) {
+            if (is_callable($function)) {
+                $this->rules[$rule] = $function;
+                if (!empty($message)) {
                     $this->messages[$rule] = $message;
                 }
             }
