@@ -1,7 +1,7 @@
 <?php
 
 
-class FormValidator extends Library_Base {
+class FormValidator {
 
     private $messages = array();
     private $errors = array();
