@@ -1,5 +1,5 @@
 PHP Class for Form Validation.
 
-Brett Millett <bretticus at gmail dot com>
+Brett Icus <bretticus at gmail dot com>
 
 Form Validation class making use of new PHP 5.3 closures and PHP 5.x method chaining techniques.
